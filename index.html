@@ -1,0 +1,372 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ParkSense AI — Smart Parking Demo</title>
+<style>
+:root {
+  --bg: #f3f6fb;
+  --card: #ffffff;
+  --text: #172033;
+  --muted: #68778d;
+  --green: #159b68;
+  --red: #df555f;
+  --amber: #d99a28;
+  --blue: #456fe5;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+header {
+  padding: 22px 5%;
+  background: #10233d;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+header h2 { margin: 0; }
+header small { color: #b7c8e4; }
+main { max-width: 1250px; margin: auto; padding: 28px 18px; }
+.intro { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+button, input { font: inherit; }
+button {
+  cursor: pointer;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: bold;
+}
+.primary { background: #167d5c; color: white; }
+.secondary { background: #edf1f7; color: #172033; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 24px 0;
+}
+.card {
+  background: var(--card);
+  border: 1px solid #e0e7f0;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 14px #16294a08;
+}
+.stat-label { color: var(--muted); font-size: 13px; }
+.stat-number { font-size: 30px; font-weight: bold; margin-top: 10px; }
+.layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.card h3 { margin-top: 0; }
+.bays {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.bay {
+  min-height: 110px;
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.bay.free { background: #e6f8ef; border-color: #a4dfbf; color: #126d48; }
+.bay.occupied { background: #fff0f0; border-color: #f0b5b9; color: #a52e39; }
+.bay.reserved { background: #fff6df; border-color: #eed18e; color: #8c6114; }
+.bay.selected { outline: 3px solid var(--blue); outline-offset: 2px; }
+.car { font-size: 27px; }
+.status { font-size: 11px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.actions button { font-size: 13px; }
+.selected-bay {
+  background: #f3f6fb;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+#recommendation {
+  background: #e8f7ef;
+  border-radius: 10px;
+  padding: 15px;
+  margin-top: 15px;
+}
+#recommendation strong { font-size: 24px; display: block; margin: 8px 0; }
+#eventLog { max-height: 230px; overflow-y: auto; }
+.event { padding: 9px 0; border-bottom: 1px solid #e7ebf2; font-size: 13px; }
+#video {
+  display: none;
+  width: 100%;
+  max-height: 300px;
+  background: #111;
+  border-radius: 8px;
+}
+#placeholder {
+  background: #edf1f7;
+  padding: 30px 12px;
+  text-align: center;
+  border-radius: 8px;
+  color: var(--muted);
+}
+input[type=file] { max-width: 100%; margin: 12px 0; }
+.note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
+@media(max-width: 760px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .layout { grid-template-columns: 1fr; }
+}
+@media(max-width: 400px) {
+  .bays { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h2>🅿 ParkSense AI</h2>
+    <small>SMART PARKING MANAGEMENT SYSTEM</small>
+  </div>
+  <span>● Interactive Demo</span>
+</header>
+
+<main>
+  <div class="intro">
+    <div>
+      <h1>Parking Intelligence Dashboard</h1>
+      <p>Monitor parking bays and simulate vehicle movements.</p>
+    </div>
+    <button class="secondary" id="reset">↻ Reset Demo</button>
+  </div>
+
+  <section class="stats">
+    <div class="card"><div class="stat-label">Total Spaces</div><div class="stat-number" id="total">12</div></div>
+    <div class="card"><div class="stat-label">Available</div><div class="stat-number" id="free">6</div></div>
+    <div class="card"><div class="stat-label">Occupied</div><div class="stat-number" id="occupied">5</div></div>
+    <div class="card"><div class="stat-label">Reserved</div><div class="stat-number" id="reserved">1</div></div>
+  </section>
+
+  <div class="layout">
+    <section class="card">
+      <h3>Zone A — Parking Bays</h3>
+      <p class="note">Select a bay to view or change its status.</p>
+      <div class="bays" id="bays"></div>
+      <p class="note">Green = free · Red = occupied · Yellow = reserved</p>
+    </section>
+
+    <div>
+      <section class="card">
+        <h3>Bay Controls</h3>
+        <div class="selected-bay">
+          Selected bay: <strong id="selectedName">A-01</strong>
+          <p>Status: <strong id="selectedStatus">FREE</strong></p>
+        </div>
+        <div class="actions">
+          <button class="primary" id="arrive">＋ Vehicle Arrives</button>
+          <button class="secondary" id="leave">↗ Vehicle Leaves</button>
+          <button class="secondary" id="reserveBtn">◷ Reserve Bay</button>
+          <button class="secondary" id="release">× Release Reserve</button>
+        </div>
+        <button class="primary" id="recommendBtn" style="width:100%;margin-top:12px">✦ Recommend a Free Bay</button>
+        <div id="recommendation">
+          <span>RECOMMENDED PARKING BAY</span>
+          <strong id="recBay">A-01</strong>
+          <span id="recText">Available parking recommendation.</span>
+        </div>
+        <p class="note">If a driver selects a bay but doesn't park, the demo does not automatically confirm parking. Use the manual controls, or connect a real detector for automatic confirmation.</p>
+      </section>
+
+      <section class="card" style="margin-top:18px">
+        <h3>Camera / Video Preview</h3>
+        <div id="placeholder">📹<br>Select a video or start your webcam.</div>
+        <video id="video" controls playsinline></video>
+        <input type="file" id="videoFile" accept="video/*">
+        <div class="actions">
+          <button class="primary" id="webcamBtn">Start Webcam</button>
+          <button class="secondary" id="stopBtn" disabled>Stop Camera</button>
+        </div>
+        <p class="note" id="cameraNote">Video preview only. AI vehicle detection is not connected.</p>
+      </section>
+
+      <section class="card" style="margin-top:18px">
+        <h3>Activity Log</h3>
+        <div id="eventLog" aria-live="polite"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer>ParkSense AI · Student prototype · Simulated parking data</footer>
+
+<script>
+const initial = [
+  "free", "occupied", "free", "occupied",
+  "occupied", "free", "reserved", "free",
+  "occupied", "free", "occupied", "free"
+];
+
+let bays = [...initial];
+let selected = 0;
+let stream = null;
+const $ = id => document.getElementById(id);
+const bayName = i => "A-" + String(i + 1).padStart(2, "0");
+
+function log(title, detail) {
+  const item = document.createElement("div");
+  item.className = "event";
+  item.textContent =
+    new Date().toLocaleTimeString() + " — " + title + ": " + detail;
+  $("eventLog").prepend(item);
+}
+
+function render() {
+  const grid = $("bays");
+  grid.replaceChildren();
+
+  bays.forEach((status, i) => {
+    const button = document.createElement("button");
+    button.className = "bay " + status + (i === selected ? " selected" : "");
+    button.innerHTML =
+      '<span>' + bayName(i) + '</span>' +
+      '<span class="car">' +
+      (status === "occupied" ? "🚘" : status === "reserved" ? "◷" : "＋") +
+      '</span><strong class="status">' + status.toUpperCase() + '</strong>';
+
+    button.onclick = () => {
+      selected = i;
+      render();
+    };
+    grid.appendChild(button);
+  });
+
+  $("total").textContent = bays.length;
+  $("free").textContent = bays.filter(x => x === "free").length;
+  $("occupied").textContent = bays.filter(x => x === "occupied").length;
+  $("reserved").textContent = bays.filter(x => x === "reserved").length;
+  $("selectedName").textContent = bayName(selected);
+  $("selectedStatus").textContent = bays[selected].toUpperCase();
+
+  $("arrive").disabled = bays[selected] === "occupied";
+  $("leave").disabled = bays[selected] !== "occupied";
+  $("reserveBtn").disabled = bays[selected] !== "free";
+  $("release").disabled = bays[selected] !== "reserved";
+
+  updateRecommendation();
+}
+
+function setStatus(status) {
+  const old = bays[selected];
+  if (old === status) return;
+  bays[selected] = status;
+  log(bayName(selected), old + " → " + status);
+  render();
+}
+
+function updateRecommendation() {
+  const index = bays.findIndex((s, i) => s === "free" && i !== selected);
+  const fallback = bays.findIndex(s => s === "free");
+  const recommended = index >= 0 ? index : fallback;
+
+  if (recommended < 0) {
+    $("recBay").textContent = "No free bays";
+    $("recText").textContent = "All bays are occupied or reserved.";
+  } else {
+    $("recBay").textContent = bayName(recommended);
+    $("recText").textContent = "This bay is currently available in the demo.";
+  }
+}
+
+$("arrive").onclick = () => setStatus("occupied");
+$("leave").onclick = () => setStatus("free");
+$("reserveBtn").onclick = () => setStatus("reserved");
+$("release").onclick = () => setStatus("free");
+
+$("recommendBtn").onclick = () => {
+  const index = bays.findIndex((s, i) => s === "free" && i !== selected);
+  if (index < 0) {
+    alert("No other free bay is available.");
+    return;
+  }
+  selected = index;
+  render();
+  log("Recommendation", "Suggested " + bayName(index));
+};
+
+$("reset").onclick = () => {
+  bays = [...initial];
+  selected = 0;
+  render();
+  log("Reset", "Demo restored to its initial state");
+};
+
+const video = $("video");
+
+$("videoFile").onchange = event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  stopCamera();
+  video.srcObject = null;
+  video.src = URL.createObjectURL(file);
+  video.style.display = "block";
+  $("placeholder").style.display = "none";
+  $("cameraNote").textContent =
+    "Video loaded. This demo does not detect vehicles automatically.";
+  video.play().catch(() => {});
+  log("Video", file.name + " loaded");
+};
+
+$("webcamBtn").onclick = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: true, audio: false
+    });
+    video.srcObject = stream;
+    video.style.display = "block";
+    $("placeholder").style.display = "none";
+    await video.play();
+    $("webcamBtn").disabled = true;
+    $("stopBtn").disabled = false;
+    $("cameraNote").textContent =
+      "Webcam active. Vehicle detection is not running.";
+    log("Camera", "Webcam started");
+  } catch (error) {
+    alert("Camera unavailable. Check browser permissions or choose a video.");
+  }
+};
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+  $("webcamBtn").disabled = false;
+  $("stopBtn").disabled = true;
+}
+
+$("stopBtn").onclick = () => {
+  stopCamera();
+  video.pause();
+  video.srcObject = null;
+  video.removeAttribute("src");
+  video.style.display = "none";
+  $("placeholder").style.display = "block";
+  log("Camera", "Camera stopped");
+};
+
+log("System", "ParkSense AI demo initialized");
+render();
+</script>
+</body>
+</html>
